@@ -6,6 +6,9 @@ blueprint:
     Optionally tracks last movement direction in an input_boolean
     (on = opening, off = closing).
   domain: automation
+  author: HairingX
+  homeassistant:
+    min_version: 2026.10.0
   source_url: https://github.com/HairingX/ha_blueprints/blob/main/automation/curtain_toggle_control/curtain_toggle_control.yaml
   input:
     control_triggers:
@@ -19,13 +22,18 @@ blueprint:
         entity:
           domain: cover
           multiple: true
-    direction_helper:
-      name: Last direction helper (optional)
-      description: input_boolean that is turned on when opening and off when closing.
-      default: ""
-      selector:
-        entity:
-          domain: input_boolean
+    advanced:
+      name: Advanced
+      icon: mdi:cog
+      collapsed: true
+      input:
+        direction_helper:
+          name: Last direction helper (optional)
+          description: input_boolean that is turned on when opening and off when closing.
+          default: ""
+          selector:
+            entity:
+              domain: input_boolean
 
 triggers:
   - triggers: !input control_triggers
@@ -103,3 +111,4 @@ actions:
 
 mode: queued
 max: 10
+max_exceeded: silent
