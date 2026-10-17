@@ -35,20 +35,25 @@ blueprint:
       selector:
         entity:
           domain: input_boolean
-    end_margin:
-      name: End position margin
-      description: >
-        A position within this many percent of 0 counts as closed, and within
-        this many percent of 100 counts as fully open. Only used for covers
-        that report a position.
-      default: 2
-      selector:
-        number:
-          min: 0
-          max: 10
-          step: 1
-          unit_of_measurement: "%"
-          mode: slider
+    advanced:
+      name: Advanced
+      icon: mdi:cog
+      collapsed: true
+      input:
+        end_margin:
+          name: End position margin
+          description: >
+            A position within this many percent of 0 counts as closed, and within
+            this many percent of 100 counts as fully open. Only used for covers
+            that report a position.
+          default: 2
+          selector:
+            number:
+              min: 0
+              max: 10
+              step: 1
+              unit_of_measurement: "%"
+              mode: slider
 
 triggers:
   - triggers: !input control_triggers

@@ -31,7 +31,7 @@ Curtains that are `unavailable`/`unknown` are ignored when deciding.
 | Control triggers | Yes | One or more triggers (button long press, switch, etc.) |
 | Curtain(s) | Yes | One or more `cover` entities, or a cover group helper |
 | Direction memory | No | `input_boolean` remembering last direction (**on** = opening, **off** = closing). See below. |
-| End position margin | No | Percent from 0/100 that still counts as closed/fully open. Default `2`. |
+| End position margin | No | *(Advanced, collapsed)* Percent from 0/100 that still counts as closed/fully open. Default `2`. |
 
 ### Direction memory updates
 
