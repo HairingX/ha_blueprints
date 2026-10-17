@@ -1,0 +1,105 @@
+blueprint:
+  name: Curtain Toggle Control
+  description: >
+    Toggles one or more curtains from any trigger(s):
+    stops if moving, opens if all closed, otherwise closes.
+    Optionally tracks last movement direction in an input_boolean
+    (on = opening, off = closing).
+  domain: automation
+  source_url: https://github.com/HairingX/ha_blueprints/blob/main/automation/curtain_toggle_control/curtain_toggle_control.yaml
+  input:
+    control_triggers:
+      name: Control triggers
+      description: One or more triggers that toggle the curtain(s), e.g. button long press, switch, etc.
+      selector:
+        trigger: {}
+    curtains:
+      name: Curtain(s)
+      selector:
+        entity:
+          domain: cover
+          multiple: true
+    direction_helper:
+      name: Last direction helper (optional)
+      description: input_boolean that is turned on when opening and off when closing.
+      default: ""
+      selector:
+        entity:
+          domain: input_boolean
+
+triggers:
+  - triggers: !input control_triggers
+  - trigger: state
+    entity_id: !input curtains
+    to: opening
+    id: curtain_opening
+  - trigger: state
+    entity_id: !input curtains
+    to: closing
+    id: curtain_closing
+
+conditions: []
+
+actions:
+  - variables:
+      curtain_entities: !input curtains
+      helper: !input direction_helper
+  - action: homeassistant.update_entity
+    target:
+      entity_id: "{{ curtain_entities }}"
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: curtain_opening
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ helper | length > 0 }}"
+            then:
+              - action: input_boolean.turn_on
+                target:
+                  entity_id: "{{ helper }}"
+      - conditions:
+          - condition: trigger
+            id: curtain_closing
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ helper | length > 0 }}"
+            then:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: "{{ helper }}"
+    default:
+      - variables:
+          curtain_states: "{{ expand(curtain_entities) | map(attribute='state') | list }}"
+      - choose:
+          - alias: Curtain is moving
+            conditions:
+              - condition: template
+                value_template: "{{ 'opening' in curtain_states or 'closing' in curtain_states }}"
+            sequence:
+              - action: cover.stop_cover
+                target:
+                  entity_id: "{{ curtain_entities }}"
+          - alias: All closed
+            conditions:
+              - condition: template
+                value_template: >
+                  {{ curtain_states | length > 0 and
+                     curtain_states | reject('eq', 'closed') | list | length == 0 }}
+            sequence:
+              - action: cover.open_cover
+                target:
+                  entity_id: "{{ curtain_entities }}"
+          - alias: Any open
+            conditions:
+              - condition: template
+                value_template: "{{ 'open' in curtain_states }}"
+            sequence:
+              - action: cover.close_cover
+                target:
+                  entity_id: "{{ curtain_entities }}"
+
+mode: queued
+max: 10
