@@ -18,13 +18,14 @@ Curtains that are `unavailable`/`unknown` are ignored when deciding.
 |---|---|---|
 | Control triggers | Yes | One or more triggers (button long press, switch, etc.) |
 | Curtain(s) | Yes | One or more `cover` entities, or a cover group helper |
-| Last direction helper | No | `input_boolean` set **on** when opening, **off** when closing (in the collapsed *Advanced* section) |
 
 ## Requirements
 
 - Home Assistant 2026.10.0 or newer.
+- A cover integration that reports `opening`/`closing` promptly. Decisions are based on the cover's live state; with slow-polling integrations the stop branch may not trigger.
 
 ## Notes
 
-- Runs in `queued` mode (max 10, overflow ignored silently) so curtain state changes are not dropped while a button press is being handled.
+- Runs in `single` mode; presses arriving while a run is in progress are ignored silently.
+- A curtain stopped mid-way reports `open`, so the next press closes it.
 - If several curtains always move together, consider a cover group helper (created in the UI) and select that instead.
