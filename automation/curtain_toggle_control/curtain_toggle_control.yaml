@@ -2,9 +2,11 @@ blueprint:
   name: Curtain Toggle Control
   description: >
     Toggles one or more curtains from any trigger(s), like a dimmer button:
-    stops if moving, opens if all closed, otherwise closes.
+    stops if moving, opens if closed, closes if fully open.
     With the optional direction memory helper, a curtain that was stopped
     mid-way reverses its last direction on the next press.
+    State is used to detect movement; position (with a margin) decides
+    whether an open/closed curtain is at an end position.
   domain: automation
   author: HairingX
   homeassistant:
@@ -33,6 +35,20 @@ blueprint:
       selector:
         entity:
           domain: input_boolean
+    end_margin:
+      name: End position margin
+      description: >
+        A position within this many percent of 0 counts as closed, and within
+        this many percent of 100 counts as fully open. Only used for covers
+        that report a position.
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
 
 triggers:
   - triggers: !input control_triggers
@@ -59,9 +75,10 @@ actions:
   - variables:
       curtain_entities: !input curtains
       helper: !input direction_memory
+      margin: !input end_margin
       has_helper: "{{ helper | length > 0 }}"
   - choose:
-      # Track direction when movement is reported (also covers app, remote, schedules)
+      # Movement reported (also covers app, remote, schedules)
       - conditions:
           - condition: trigger
             id: curtain_opening
@@ -73,33 +90,6 @@ actions:
               - action: input_boolean.turn_on
                 target:
                   entity_id: "{{ helper }}"
-      # Reached an end position: remember it so the next press goes the other way.
-      # "open" is also reported when stopped mid-way, so only count it as fully
-      # opened at position 100, or (without position support) when it did not
-      # come from "closing" (which means it was stopped while closing).
-      - conditions:
-          - condition: trigger
-            id: curtain_opened
-          - condition: template
-            value_template: >
-              {% set pos = trigger.to_state.attributes.current_position | default(none) %}
-              {{ (pos is number and pos >= 100) or
-                 (pos is not number and trigger.from_state is not none
-                  and trigger.from_state.state != 'closing') }}
-        sequence:
-          - if:
-              - condition: template
-                value_template: "{{ has_helper }}"
-            then:
-              - action: input_boolean.turn_on
-                target:
-                  entity_id: "{{ helper }}"
-      # Stopped mid-way: keep the remembered direction (must not fall through to default)
-      - conditions:
-          - condition: trigger
-            id: curtain_opened
-        sequence:
-          - stop: Stopped mid-way, keeping remembered direction
       - conditions:
           - condition: trigger
             id:
@@ -113,24 +103,63 @@ actions:
               - action: input_boolean.turn_off
                 target:
                   entity_id: "{{ helper }}"
+      # Reported "open": classify by position, since "open" is also reported
+      # when stopped mid-way. Without position: fully open unless it came
+      # from "closing" (= stopped while closing).
+      - conditions:
+          - condition: trigger
+            id: curtain_opened
+        sequence:
+          - variables:
+              pos: "{{ trigger.to_state.attributes.current_position | default(none) }}"
+              end_reached: >
+                {% if pos is number and pos <= margin %}closed
+                {%- elif pos is number and pos >= 100 - margin %}open
+                {%- elif pos is not number and trigger.from_state is not none
+                         and trigger.from_state.state != 'closing' %}open
+                {%- else %}none{% endif %}
+          - if:
+              - condition: template
+                value_template: "{{ has_helper and end_reached == 'open' }}"
+            then:
+              - action: input_boolean.turn_on
+                target:
+                  entity_id: "{{ helper }}"
+          - if:
+              - condition: template
+                value_template: "{{ has_helper and end_reached == 'closed' }}"
+            then:
+              - action: input_boolean.turn_off
+                target:
+                  entity_id: "{{ helper }}"
     # Control trigger
     default:
       - action: homeassistant.update_entity
         target:
           entity_id: "{{ curtain_entities }}"
       - variables:
-          curtains_expanded: "{{ expand(curtain_entities) }}"
-          curtain_states: "{{ curtains_expanded | map(attribute='state') | list }}"
-          positions: >
-            {{ curtains_expanded | map(attribute='attributes.current_position')
-               | select('number') | list }}
-          fully_open: "{{ positions | length > 0 and positions | min >= 100 }}"
+          # Effective state per curtain: moving / closed / full / partial
+          effective: >
+            {% set ns = namespace(out=[]) %}
+            {% for c in expand(curtain_entities) %}
+              {% set pos = c.attributes.current_position | default(none) %}
+              {% if c.state in ['opening', 'closing'] %}
+                {% set ns.out = ns.out + ['moving'] %}
+              {% elif c.state == 'closed' or (c.state == 'open' and pos is number and pos <= margin) %}
+                {% set ns.out = ns.out + ['closed'] %}
+              {% elif c.state == 'open' and pos is number and pos >= 100 - margin %}
+                {% set ns.out = ns.out + ['full'] %}
+              {% elif c.state == 'open' %}
+                {% set ns.out = ns.out + ['partial'] %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.out }}
           last_was_closing: "{{ has_helper and is_state(helper, 'off') }}"
       - choose:
           - alias: Curtain is moving
             conditions:
               - condition: template
-                value_template: "{{ 'opening' in curtain_states or 'closing' in curtain_states }}"
+                value_template: "{{ 'moving' in effective }}"
             sequence:
               - action: cover.stop_cover
                 target:
@@ -139,9 +168,9 @@ actions:
             conditions:
               - condition: template
                 value_template: >
-                  {% set all_closed = curtain_states | length > 0 and
-                     curtain_states | reject('eq', 'closed') | list | length == 0 %}
-                  {{ all_closed or (last_was_closing and 'open' in curtain_states and not fully_open) }}
+                  {{ effective | length > 0 and
+                     (effective | reject('eq', 'closed') | list | length == 0
+                      or (last_was_closing and 'full' not in effective)) }}
             sequence:
               - action: cover.open_cover
                 target:
@@ -153,10 +182,10 @@ actions:
                   - action: input_boolean.turn_on
                     target:
                       entity_id: "{{ helper }}"
-          - alias: Open, or stopped while opening
+          - alias: Fully open, or stopped while opening
             conditions:
               - condition: template
-                value_template: "{{ 'open' in curtain_states }}"
+                value_template: "{{ 'full' in effective or 'partial' in effective }}"
             sequence:
               - action: cover.close_cover
                 target:
