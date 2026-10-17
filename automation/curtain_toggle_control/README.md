@@ -20,7 +20,7 @@ Curtains that are `unavailable`/`unknown` are ignored when deciding.
 |---|---|---|
 | Control triggers | Yes | One or more triggers (button long press, switch, etc.) |
 | Curtain(s) | Yes | One or more `cover` entities, or a cover group helper |
-| Direction memory | No | `input_boolean` remembering last direction (**on** = opening, **off** = closing). Updated both when this blueprint moves the curtain and when movement is reported from elsewhere (app, remote, schedules). |
+| Direction memory | No | `input_boolean` remembering last direction (**on** = opening, **off** = closing). Updated when this blueprint moves the curtain, when movement is reported from elsewhere (app, remote, schedules), and when an end position is reached (fully open → on, closed → off). Stopping mid-way keeps the remembered direction. |
 
 ## Requirements
 

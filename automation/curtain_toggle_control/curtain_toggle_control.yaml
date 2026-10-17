@@ -44,6 +44,14 @@ triggers:
     entity_id: !input curtains
     to: closing
     id: curtain_closing
+  - trigger: state
+    entity_id: !input curtains
+    to: closed
+    id: curtain_closed
+  - trigger: state
+    entity_id: !input curtains
+    to: open
+    id: curtain_opened
 
 conditions: []
 
@@ -65,9 +73,38 @@ actions:
               - action: input_boolean.turn_on
                 target:
                   entity_id: "{{ helper }}"
+      # Reached an end position: remember it so the next press goes the other way.
+      # "open" is also reported when stopped mid-way, so only count it as fully
+      # opened at position 100, or (without position support) when it did not
+      # come from "closing" (which means it was stopped while closing).
       - conditions:
           - condition: trigger
-            id: curtain_closing
+            id: curtain_opened
+          - condition: template
+            value_template: >
+              {% set pos = trigger.to_state.attributes.current_position | default(none) %}
+              {{ (pos is number and pos >= 100) or
+                 (pos is not number and trigger.from_state is not none
+                  and trigger.from_state.state != 'closing') }}
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ has_helper }}"
+            then:
+              - action: input_boolean.turn_on
+                target:
+                  entity_id: "{{ helper }}"
+      # Stopped mid-way: keep the remembered direction (must not fall through to default)
+      - conditions:
+          - condition: trigger
+            id: curtain_opened
+        sequence:
+          - stop: Stopped mid-way, keeping remembered direction
+      - conditions:
+          - condition: trigger
+            id:
+              - curtain_closing
+              - curtain_closed
         sequence:
           - if:
               - condition: template
