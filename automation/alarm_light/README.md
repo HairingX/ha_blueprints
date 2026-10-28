@@ -24,4 +24,3 @@ Runs in `restart` mode, so turning the trigger off stops the flashing at once.
 ## Notes
 
 - Select both lights: the actions target the selected entities, and an empty one has nothing to act on.
-- Moved here from [HairingX/homeassistant_public](https://github.com/HairingX/homeassistant_public).

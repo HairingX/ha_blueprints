@@ -33,4 +33,3 @@ Runs in `queued` mode (max 2).
 
 - A short press also writes the direction to *Last Transition State*, even when no helper is selected, so selecting one is recommended.
 - Writes its dim calculations to the system log at `info` level while dimming.
-- Moved here from [HairingX/homeassistant_public](https://github.com/HairingX/homeassistant_public).

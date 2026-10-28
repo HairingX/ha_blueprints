@@ -25,4 +25,3 @@ Runs in `restart` mode, so turning the trigger off stops the sound at once.
 ## Notes
 
 - After the alarm the volume is left at 30 %, not at what it was before.
-- Moved here from [HairingX/homeassistant_public](https://github.com/HairingX/homeassistant_public).
