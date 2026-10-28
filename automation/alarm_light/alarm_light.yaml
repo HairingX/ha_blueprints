@@ -1,0 +1,89 @@
+blueprint:
+  name: Alarm Light
+  description: Light animations, spot light etc. for when the alarm has triggered
+  domain: automation
+  author: HairingX
+  input:
+    alarm_trigger:
+      name: Trigger
+      description: The trigger that activates and deactivates the alarm-light.
+      selector:
+        entity:
+          domain:
+            - input_boolean
+          multiple: false
+    always_on_light:
+      name: Always On Light
+      description: The light that will be kept at full strength while active.
+      default:
+      selector:
+        entity:
+          domain:
+            - light
+          multiple: false
+    flashing_light:
+      name: Flashing Light
+      description: The light that will be flashing while active.
+      default:
+      selector:
+        entity:
+          domain:
+            - light
+          multiple: false
+  source_url: https://github.com/HairingX/ha_blueprints/blob/main/automation/alarm_light/alarm_light.yaml
+mode: restart
+trigger:
+  - platform: state
+    entity_id: !input alarm_trigger
+    to: "on"
+  - platform: state
+    entity_id: !input alarm_trigger
+    to: "off"
+action:
+  - variables:
+      alarm_trigger: !input alarm_trigger
+      always_on_light: !input always_on_light
+      flashing_light: !input flashing_light
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: '{{states(alarm_trigger) == "on"}}'
+        sequence:
+          - service: light.turn_on
+            data:
+              transition: 1
+              brightness_pct: 100
+            target:
+              entity_id: '{{always_on_light}}'
+          - repeat:
+              sequence:
+                - service: light.turn_on
+                  data:
+                    transition: 1
+                    brightness_pct: 100
+                  target:
+                    entity_id: '{{flashing_light}}'
+                - delay:
+                    hours: 0
+                    minutes: 0
+                    seconds: 1
+                    milliseconds: 0
+                - service: light.turn_off
+                  data:
+                    transition: 2
+                  target:
+                    entity_id: '{{flashing_light}}'
+              until:
+                - condition: template
+                  value_template: '{{states(alarm_trigger) != "on"}}'
+          - service: light.turn_off
+            data:
+              transition: 1
+            target:
+              entity_id: '{{always_on_light}}'
+          - service: light.turn_off
+            data:
+              transition: 1
+            target:
+              entity_id: '{{flashing_light}}'
+          
