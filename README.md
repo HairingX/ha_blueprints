@@ -6,7 +6,10 @@ Home Assistant blueprints. Each blueprint lives in its own folder under its doma
 
 | Blueprint | Description |
 |---|---|
+| [Alarm Light](automation/alarm_light/) | Keep one light at full strength and flash another while the alarm is on |
+| [Alarm Speaker](automation/alarm_speaker/) | Play a sound on a speaker, over and over, while the alarm is on |
 | [Curtain Toggle Control](automation/curtain_toggle_control/) | Toggle one or more curtains from any trigger(s): stop if moving, open if closed, otherwise close |
+| [Single Button Advanced Light Switch](automation/single_button_advanced_light_switch/) | Press a button to switch a light on/off, hold it to dim up or down |
 
 ## Import
 
