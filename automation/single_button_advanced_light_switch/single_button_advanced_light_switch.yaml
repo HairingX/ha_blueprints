@@ -109,13 +109,12 @@ triggers:
     entity_id: !input button
     to: "on"
 
-variables:
-  entity_id_light: !input light
-  entity_id_button: !input button
-  helper: !input last_transition_state
-  has_helper: "{{ helper not in [none, ''] }}"
-
 actions:
+  - variables:
+      entity_id_light: !input light
+      entity_id_button: !input button
+      helper: !input last_transition_state
+      has_helper: "{{ helper not in [none, ''] }}"
   - wait_for_trigger:
       - trigger: state
         entity_id: !input button
