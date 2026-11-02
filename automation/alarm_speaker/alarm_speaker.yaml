@@ -55,14 +55,13 @@ triggers:
     to: "off"
     id: alarm_off
 
-variables:
-  alarm_trigger: !input alarm_trigger
-  media: !input media
-  loop_length: !input loop_length
-  volume_pct: !input volume_pct
-  speaker: "{{ media.entity_id }}"
-
 actions:
+  - variables:
+      alarm_trigger: !input alarm_trigger
+      media: !input media
+      loop_length: !input loop_length
+      volume_pct: !input volume_pct
+      speaker: "{{ media.entity_id }}"
   - choose:
       - alias: Alarm on
         conditions:

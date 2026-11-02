@@ -42,14 +42,13 @@ triggers:
     to: "off"
     id: alarm_off
 
-variables:
-  alarm_trigger: !input alarm_trigger
-  always_on_light: !input always_on_light
-  flashing_light: !input flashing_light
-  # The lights that are selected; an empty input is left out.
-  lights: "{{ [always_on_light, flashing_light] | select | list }}"
-
 actions:
+  - variables:
+      alarm_trigger: !input alarm_trigger
+      always_on_light: !input always_on_light
+      flashing_light: !input flashing_light
+      # The lights that are selected; an empty input is left out.
+      lights: "{{ [always_on_light, flashing_light] | select | list }}"
   - choose:
       - alias: Alarm on
         conditions:
