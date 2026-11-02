@@ -4,6 +4,8 @@
 
 One push button for a light: press to switch it on or off, hold to dim it up or down.
 
+Requires Home Assistant 2024.10 or newer.
+
 ## What it does
 
 | Button | Action |
@@ -11,7 +13,7 @@ One push button for a light: press to switch it on or off, hold to dim it up or 
 | Pressed shorter than *Hold threshold* | Light off if it is on, on if it is off |
 | Held | Dims towards the upper or lower bound until released |
 
-The dim direction is the opposite of the last one, kept in *Last Transition State*. Without that helper, the light dims down above half brightness and up below it.
+The dim direction is the opposite of the last one, kept in *Last transition state*. Without that helper, the light dims down above half brightness and up below it.
 
 Runs in `queued` mode (max 2).
 
@@ -21,7 +23,7 @@ Runs in `queued` mode (max 2).
 |---|---|---|
 | Push button | - | `binary_sensor` or `input_boolean` that is `on` while the button is pressed |
 | Light | - | The `light` to control |
-| Last Transition State | none | `input_number` that keeps the last dim direction (-1 / 1) |
+| Last transition state | none | Optional `input_number` that keeps the last dim direction (-1 / 1) |
 | Hold threshold | 0.8 s | How long a press must last to count as a hold |
 | Brightness transition | 4.0 s | Time for a full dim from one bound to the other |
 | Overshoot amount | 0 | Brightness added past the point where the button was released (-15 to 15) |
@@ -31,5 +33,4 @@ Runs in `queued` mode (max 2).
 
 ## Notes
 
-- A short press also writes the direction to *Last Transition State*, even when no helper is selected, so selecting one is recommended.
-- Writes its dim calculations to the system log at `info` level while dimming.
+- A short press also sets *Last transition state*: -1 when it switches the light off, 1 when it switches it on, so the next hold dims the other way.

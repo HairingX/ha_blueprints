@@ -4,6 +4,8 @@
 
 Lights for when the alarm has triggered: one light kept at full strength, and one flashing, for as long as the alarm trigger is on.
 
+Requires Home Assistant 2024.10 or newer.
+
 ## What it does
 
 | Trigger turns | Action |
@@ -11,16 +13,14 @@ Lights for when the alarm has triggered: one light kept at full strength, and on
 | `on` | Always-on light to 100 % (1 s transition). Flashing light on at 100 % for 1 s, then off over 2 s, repeated until the trigger turns off |
 | `off` | Both lights off (1 s transition) |
 
-Runs in `restart` mode, so turning the trigger off stops the flashing at once.
+Runs in `restart` mode: turning the trigger off stops the flashing at once and starts a new run that switches the lights off.
 
 ## Inputs
 
 | Input | Default | Description |
 |---|---|---|
 | Trigger | - | `input_boolean` that turns the alarm lights on and off |
-| Always On Light | none | `light` kept at full strength while active |
-| Flashing Light | none | `light` that flashes while active |
+| Always on light | none | `light` kept at full strength while active |
+| Flashing light | none | `light` that flashes while active |
 
-## Notes
-
-- Select both lights: the actions target the selected entities, and an empty one has nothing to act on.
+Both lights are optional; a light left empty is skipped.

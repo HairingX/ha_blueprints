@@ -1,89 +1,104 @@
 blueprint:
   name: Alarm Light
-  description: Light animations, spot light etc. for when the alarm has triggered
+  description: >
+    While the alarm trigger is on, keeps one light at full brightness and
+    flashes another. When the trigger turns off, both lights are switched off.
   domain: automation
   author: HairingX
+  homeassistant:
+    min_version: 2024.10.0
+  source_url: https://github.com/HairingX/ha_blueprints/blob/main/automation/alarm_light/alarm_light.yaml
   input:
     alarm_trigger:
       name: Trigger
-      description: The trigger that activates and deactivates the alarm-light.
+      description: The input_boolean that turns the alarm light on and off.
       selector:
         entity:
-          domain:
-            - input_boolean
-          multiple: false
+          domain: input_boolean
     always_on_light:
-      name: Always On Light
-      description: The light that will be kept at full strength while active.
-      default:
+      name: Always on light (optional)
+      description: The light kept at full brightness while the alarm is on.
+      default: ""
       selector:
         entity:
-          domain:
-            - light
-          multiple: false
+          domain: light
     flashing_light:
-      name: Flashing Light
-      description: The light that will be flashing while active.
-      default:
+      name: Flashing light (optional)
+      description: The light that flashes while the alarm is on.
+      default: ""
       selector:
         entity:
-          domain:
-            - light
-          multiple: false
-  source_url: https://github.com/HairingX/ha_blueprints/blob/main/automation/alarm_light/alarm_light.yaml
+          domain: light
+
 mode: restart
-trigger:
-  - platform: state
+
+triggers:
+  - trigger: state
     entity_id: !input alarm_trigger
     to: "on"
-  - platform: state
+    id: alarm_on
+  - trigger: state
     entity_id: !input alarm_trigger
     to: "off"
-action:
-  - variables:
-      alarm_trigger: !input alarm_trigger
-      always_on_light: !input always_on_light
-      flashing_light: !input flashing_light
+    id: alarm_off
+
+variables:
+  alarm_trigger: !input alarm_trigger
+  always_on_light: !input always_on_light
+  flashing_light: !input flashing_light
+  # The lights that are selected; an empty input is left out.
+  lights: "{{ [always_on_light, flashing_light] | select | list }}"
+
+actions:
   - choose:
-      - conditions:
-          - condition: template
-            value_template: '{{states(alarm_trigger) == "on"}}'
+      - alias: Alarm on
+        conditions:
+          - condition: trigger
+            id: alarm_on
         sequence:
-          - service: light.turn_on
+          - if:
+              - condition: template
+                value_template: "{{ always_on_light not in [none, ''] }}"
+            then:
+              - action: light.turn_on
+                target:
+                  entity_id: "{{ always_on_light }}"
+                data:
+                  transition: 1
+                  brightness_pct: 100
+          - if:
+              - condition: template
+                value_template: "{{ flashing_light not in [none, ''] }}"
+            then:
+              - repeat:
+                  sequence:
+                    - action: light.turn_on
+                      target:
+                        entity_id: "{{ flashing_light }}"
+                      data:
+                        transition: 1
+                        brightness_pct: 100
+                    - delay:
+                        seconds: 1
+                    - action: light.turn_off
+                      target:
+                        entity_id: "{{ flashing_light }}"
+                      data:
+                        transition: 2
+                  until:
+                    - condition: template
+                      value_template: "{{ not is_state(alarm_trigger, 'on') }}"
+      # In restart mode the run that flashes is stopped when the trigger turns
+      # off, so switching the lights off has to be a run of its own.
+      - alias: Alarm off
+        conditions:
+          - condition: trigger
+            id: alarm_off
+          - condition: template
+            value_template: "{{ lights | length > 0 }}"
+        sequence:
+          - action: light.turn_off
+            target:
+              entity_id: "{{ lights }}"
             data:
               transition: 1
-              brightness_pct: 100
-            target:
-              entity_id: '{{always_on_light}}'
-          - repeat:
-              sequence:
-                - service: light.turn_on
-                  data:
-                    transition: 1
-                    brightness_pct: 100
-                  target:
-                    entity_id: '{{flashing_light}}'
-                - delay:
-                    hours: 0
-                    minutes: 0
-                    seconds: 1
-                    milliseconds: 0
-                - service: light.turn_off
-                  data:
-                    transition: 2
-                  target:
-                    entity_id: '{{flashing_light}}'
-              until:
-                - condition: template
-                  value_template: '{{states(alarm_trigger) != "on"}}'
-          - service: light.turn_off
-            data:
-              transition: 1
-            target:
-              entity_id: '{{always_on_light}}'
-          - service: light.turn_off
-            data:
-              transition: 1
-            target:
-              entity_id: '{{flashing_light}}'
-          

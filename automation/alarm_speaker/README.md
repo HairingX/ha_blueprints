@@ -4,6 +4,8 @@
 
 Plays a sound on a speaker, over and over, for as long as the alarm trigger is on.
 
+Requires Home Assistant 2024.10 or newer.
+
 ## What it does
 
 | Trigger turns | Action |
@@ -11,7 +13,7 @@ Plays a sound on a speaker, over and over, for as long as the alarm trigger is o
 | `on` | Sets the speaker's volume, then plays the selected media every *Loop length* seconds until the trigger turns off |
 | `off` | Stops the speaker, clears its playlist and sets its volume to 30 % |
 
-Runs in `restart` mode, so turning the trigger off stops the sound at once.
+Runs in `restart` mode: turning the trigger off stops the loop at once and starts a new run that stops the speaker.
 
 ## Inputs
 
@@ -25,3 +27,4 @@ Runs in `restart` mode, so turning the trigger off stops the sound at once.
 ## Notes
 
 - After the alarm the volume is left at 30 %, not at what it was before.
+- A speaker that does not support stop or clearing its playlist still gets its volume set.

@@ -1,24 +1,28 @@
 blueprint:
   name: Alarm Speaker
-  description: Speaker sounds for when the alarm has triggered
+  description: >
+    While the alarm trigger is on, plays a sound on a speaker over and over.
+    When the trigger turns off, the speaker is stopped and its volume set to 30 %.
   domain: automation
   author: HairingX
+  homeassistant:
+    min_version: 2024.10.0
+  source_url: https://github.com/HairingX/ha_blueprints/blob/main/automation/alarm_speaker/alarm_speaker.yaml
   input:
     alarm_trigger:
       name: Trigger
-      description: The trigger that activates and deactivates the alarm-light.
+      description: The input_boolean that turns the alarm sound on and off.
       selector:
         entity:
-          domain:
-            - input_boolean
+          domain: input_boolean
     media:
       name: Media
-      description: Media being played.
+      description: The media to play, and the speaker (media player) to play it on.
       selector:
-        media:
+        media: {}
     loop_length:
       name: Loop length
-      description: Loop time.
+      description: Time between each start of the media.
       default: 3
       selector:
         number:
@@ -29,60 +33,79 @@ blueprint:
           mode: slider
     volume_pct:
       name: Volume
-      description: The volume the speaker will play at
+      description: The volume the speaker plays at while the alarm is on.
       default: 80
       selector:
         number:
           min: 0
           max: 100
           step: 1
-          unit_of_measurement: '%'
+          unit_of_measurement: "%"
           mode: slider
-  source_url: https://github.com/HairingX/ha_blueprints/blob/main/automation/alarm_speaker/alarm_speaker.yaml
+
 mode: restart
-trigger:
-  - platform: state
+
+triggers:
+  - trigger: state
     entity_id: !input alarm_trigger
     to: "on"
-  - platform: state
+    id: alarm_on
+  - trigger: state
     entity_id: !input alarm_trigger
     to: "off"
-action:
-  - variables:
-      alarm_trigger: !input alarm_trigger
-      media: !input media
-      loop_length: !input loop_length
-      volume_pct: !input volume_pct
+    id: alarm_off
+
+variables:
+  alarm_trigger: !input alarm_trigger
+  media: !input media
+  loop_length: !input loop_length
+  volume_pct: !input volume_pct
+  speaker: "{{ media.entity_id }}"
+
+actions:
   - choose:
-      - conditions:
-          - condition: template
-            value_template: '{{states(alarm_trigger) == "on"}}'
+      - alias: Alarm on
+        conditions:
+          - condition: trigger
+            id: alarm_on
         sequence:
-          - service: media_player.volume_set
-            data: 
-              entity_id: '{{media.entity_id}}'
-              volume_level: '{{volume_pct / 100}}'
+          - action: media_player.volume_set
+            target:
+              entity_id: "{{ speaker }}"
+            data:
+              volume_level: "{{ volume_pct / 100 }}"
           - repeat:
               sequence:
-                - service: media_player.play_media
-                  data: 
-                    entity_id: '{{media.entity_id}}'
-                    media_content_id: '{{media.media_content_id}}'
-                    media_content_type: '{{media.media_content_type}}'
-                    enqueue: 'next'
+                - action: media_player.play_media
+                  target:
+                    entity_id: "{{ speaker }}"
+                  data:
+                    media_content_id: "{{ media.media_content_id }}"
+                    media_content_type: "{{ media.media_content_type }}"
+                    enqueue: next
                 - delay:
-                    seconds: '{{loop_length}}'
+                    seconds: "{{ loop_length }}"
               until:
                 - condition: template
-                  value_template: '{{ states(alarm_trigger) != "on" }}'
-          - service: media_player.media_stop
-            data: 
-              entity_id: '{{media.entity_id}}'
-          - service: media_player.clear_playlist
-            data: 
-              entity_id: '{{media.entity_id}}'
-          - service: media_player.volume_set
-            data: 
-              entity_id: '{{media.entity_id}}'
+                  value_template: "{{ not is_state(alarm_trigger, 'on') }}"
+      # In restart mode the run that plays is stopped when the trigger turns
+      # off, so stopping the speaker has to be a run of its own.
+      - alias: Alarm off
+        conditions:
+          - condition: trigger
+            id: alarm_off
+        sequence:
+          # Not every speaker supports stop or a playlist; the volume is still set.
+          - action: media_player.media_stop
+            target:
+              entity_id: "{{ speaker }}"
+            continue_on_error: true
+          - action: media_player.clear_playlist
+            target:
+              entity_id: "{{ speaker }}"
+            continue_on_error: true
+          - action: media_player.volume_set
+            target:
+              entity_id: "{{ speaker }}"
+            data:
               volume_level: 0.3
-          
